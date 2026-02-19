@@ -11,7 +11,7 @@ default:
     - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
       value: cumulative
     - name: OTEL_RESOURCE_ATTRIBUTES
-      value: 'service.name=$(OTEL_SERVICE_NAME),service.namespace=$(NAME),service.version={{ .Chart.AppVersion }}'
+      value: 'service.name=$(OTEL_SERVICE_NAME),service.namespace=sherif-k8s-otel-o11y,service.version={{ .Chart.AppVersion }}'
 
 opentelemetry-collector:
   enabled: true
