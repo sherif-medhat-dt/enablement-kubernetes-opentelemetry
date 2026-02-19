@@ -85,10 +85,10 @@ spec:
           from_attribute: k8s.cluster.name
           action: insert
       resourcedetection/ec2:
-        # detectors: [env, gcp]
-        detectors: [ec2]
-        timeout: 2s
-        override: false
+        detectors: ["ec2"]
+        ec2:
+          max_attempts: 10
+          max_backoff: 5m
       resource/kind:
         attributes:
         - key: cloud.account.id
