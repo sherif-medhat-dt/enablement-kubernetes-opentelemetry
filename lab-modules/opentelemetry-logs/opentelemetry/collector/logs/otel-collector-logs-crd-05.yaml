@@ -5,6 +5,11 @@ metadata:
   name: dynatrace-logs
   namespace: dynatrace
 spec:
+  env:
+    - name: K8S_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
   envFrom:
   - secretRef:
       name: dynatrace-otelcol-dt-api-credentials
