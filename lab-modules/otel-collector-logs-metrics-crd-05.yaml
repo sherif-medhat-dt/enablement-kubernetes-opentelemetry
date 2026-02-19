@@ -70,11 +70,6 @@ spec:
           - node
           - pod
           - container
-      k8s_cluster:
-        collection_interval: 60s
-        node_conditions_to_report: [ "Ready", "MemoryPressure", "DiskPressure" ]
-        allocatable_types_to_report: [ "cpu","memory" ]
-        metadata_collection_interval: 5m
 
     processors:
       batch:
@@ -167,6 +162,6 @@ spec:
           processors: [resourcedetection/ec2,resource/kind,resource,k8sattributes,batch]
           exporters: [otlphttp/dynatrace,debug]
         metrics:
-          receivers: [otlp,k8s_cluster]
+          receivers: [otlp,kubeletstats]
           processors: [k8sattributes,resource/kind,resource,batch]
           exporters: [otlphttp/dynatrace,debug]
