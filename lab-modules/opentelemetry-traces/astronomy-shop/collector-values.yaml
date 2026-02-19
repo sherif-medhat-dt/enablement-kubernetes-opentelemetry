@@ -110,6 +110,7 @@ opentelemetry-collector:
     service:
       pipelines:
         traces:
+          receivers: [otlp]
           processors: [memory_limiter, resourcedetection, resource, transform, batch]
           exporters: [otlp/jaeger, debug, spanmetrics,otlphttp/dttraces]
         metrics:
