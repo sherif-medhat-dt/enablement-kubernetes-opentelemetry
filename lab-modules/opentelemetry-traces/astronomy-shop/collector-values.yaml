@@ -56,7 +56,7 @@ opentelemetry-collector:
       otlphttp/dttraces:
         endpoint: http://dynatrace-traces-collector.dynatrace.svc.cluster.local:4318
       otlphttp/dtlogs:
-        endpoint: http://dynatrace-logs-collector.dynatrace.svc.cluster.local:4318
+        endpoint: http://dynatrace-logs-metrics-collector.dynatrace.svc.cluster.local:4318
       otlphttp/dtmetrics:
         endpoint: http://dynatrace-metrics-cluster-collector.dynatrace.svc.cluster.local:4318
       ## Create an exporter to Jaeger using the standard `otlp` export format
