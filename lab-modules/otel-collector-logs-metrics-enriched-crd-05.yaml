@@ -2,7 +2,7 @@
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
-  name: dynatrace-logs-metrics
+  name: dynatrace-logs-metrics-traces
   namespace: dynatrace
 spec:
   env:
@@ -191,6 +191,10 @@ spec:
         metrics:
           level: "detailed"
       pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [k8sattributes,resourcedetection/gcp,resource/kind,resource,batch,transform]
+          exporters: [otlphttp/dynatrace,debug]
         logs:
           receivers: [otlp,filelog]
           processors: [resourcedetection/ec2,resource/kind,resource,k8sattributes,batch,transform]
