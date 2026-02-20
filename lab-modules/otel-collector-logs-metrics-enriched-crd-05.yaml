@@ -1,0 +1,201 @@
+---
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: dynatrace-logs-metrics
+  namespace: dynatrace
+spec:
+  env:
+    - name: K8S_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+  envFrom:
+  - secretRef:
+      name: dynatrace-otelcol-dt-api-credentials
+  mode: "daemonset"
+  image: "ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.39.0"
+  observability:
+    metrics:
+      enableMetrics: true
+  resources:
+    limits:
+      memory: 1024Mi
+  # mount host log directories to the otel collector container(s)
+  volumes:
+    - name: varlogpods
+      hostPath:
+        path: /var/log/pods
+    - name: varlogcontainers
+      hostPath:
+        path: /var/log/containers
+  volumeMounts:
+    - name: varlogpods
+      mountPath: /var/log/pods
+      readOnly: true
+    - name: varlogcontainers
+      mountPath: /var/log/containers
+      readOnly: true
+  # 
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      filelog:
+        include:
+          # Include only astronomy-shop namespace logs
+          #- /var/log/pods/astronomy-shop_*/*/*.log
+          # Include only dynatrace namespace logs
+          #- /var/log/pods/dynatrace_*/*/*.log
+          - /var/log/pods/*/*/*.log
+          #- /var/log/containers/*.log
+        exclude: []
+        start_at: end
+        include_file_path: true
+        include_file_name: false
+        operators:
+          # parse container logs
+          - type: container
+            id: container-parser
+      kubeletstats:
+        collection_interval: 30s
+        auth_type: 'serviceAccount'
+        endpoint: '${env:K8S_NODE_NAME}:10250'
+        insecure_skip_verify: true
+        metric_groups:
+          - node
+          - pod
+          - container
+
+    processors:
+      transform:
+        error_mode: ignore
+        trace_statements: &dynatrace_transformations
+          # Set attributes taken from k8s metadata.
+          - context: resource
+            statements:
+              - set(attributes["k8s.cluster.name"], "${env:CLUSTER_NAME}")
+              - set(attributes["k8s.workload.kind"], "job") where IsString(attributes["k8s.job.name"])
+              - set(attributes["k8s.workload.name"], attributes["k8s.job.name"]) where IsString(attributes["k8s.job.name"])
+              - set(attributes["k8s.workload.kind"], "cronjob") where IsString(attributes["k8s.cronjob.name"])
+              - set(attributes["k8s.workload.name"], attributes["k8s.cronjob.name"]) where IsString(attributes["k8s.cronjob.name"])
+              - set(attributes["k8s.workload.kind"], "daemonset") where IsString(attributes["k8s.daemonset.name"])
+              - set(attributes["k8s.workload.name"], attributes["k8s.daemonset.name"]) where IsString(attributes["k8s.daemonset.name"])
+              - set(attributes["k8s.workload.kind"], "statefulset") where IsString(attributes["k8s.statefulset.name"])
+              - set(attributes["k8s.workload.name"], attributes["k8s.statefulset.name"]) where IsString(attributes["k8s.statefulset.name"])
+              - set(attributes["k8s.workload.kind"], "replicaset") where IsString(attributes["k8s.replicaset.name"])
+              - set(attributes["k8s.workload.name"], attributes["k8s.replicaset.name"]) where IsString(attributes["k8s.replicaset.name"])
+              - set(attributes["k8s.workload.kind"], "deployment") where IsString(attributes["k8s.deployment.name"])
+              - set(attributes["k8s.workload.name"], attributes["k8s.deployment.name"]) where IsString(attributes["k8s.deployment.name"])
+              # remove the delete statements if you want to preserve these attributes
+              - delete_key(attributes, "k8s.deployment.name")
+              - delete_key(attributes, "k8s.replicaset.name")
+              - delete_key(attributes, "k8s.statefulset.name")
+              - delete_key(attributes, "k8s.daemonset.name")
+              - delete_key(attributes, "k8s.cronjob.name")
+              - delete_key(attributes, "k8s.job.name")
+          # Set attributes from metadata specified in Dynatrace and set through the Dynatrace Operator.
+          # For more info: https://docs.dynatrace.com/docs/shortlink/k8s-metadata-telemetry-enrichment
+          - context: resource
+            statements:
+              - merge_maps(attributes, ParseJSON(attributes["metadata.dynatrace.com"]), "upsert") where IsMatch(attributes["metadata.dynatrace.com"], "^\\{")
+              - delete_key(attributes, "metadata.dynatrace.com")
+        metric_statements: *dynatrace_transformations
+        log_statements: *dynatrace_transformations
+      batch:
+        send_batch_max_size: 1000
+        timeout: 30s
+        send_batch_size: 800
+      resource:
+        attributes:
+        - key: k8s.pod.ip
+          action: delete
+        - key: telemetry.sdk.name
+          value: opentelemetry
+          action: insert
+        - key: dynatrace.otel.collector
+          value: dynatrace-logs
+          action: insert
+        - key: dt.security_context
+          from_attribute: k8s.cluster.name
+          action: insert
+      resourcedetection/ec2:
+        detectors: ["ec2"]
+        ec2:
+          max_attempts: 10
+          max_backoff: 5m
+      resource/kind:
+        attributes:
+        - key: cloud.account.id
+          value: dt-k8s-o11y-account
+          action: insert
+        - key: k8s.cluster.name
+          value: dt-k8s-o11y-kind
+          action: insert
+      k8sattributes:
+        auth_type: "serviceAccount"
+        passthrough: false
+        # filter:
+        #  node_from_env_var: KUBE_NODE_NAME
+        extract:
+          metadata:
+            - k8s.namespace.name
+            - k8s.deployment.name
+            - k8s.daemonset.name
+            - k8s.job.name
+            - k8s.cronjob.name
+            - k8s.replicaset.name
+            - k8s.statefulset.name
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.node.name
+            - k8s.container.name
+            - container.id
+            - container.image.name
+            - container.image.tag
+          labels:
+            - tag_name: app.label.component
+              key: app.kubernetes.io/component
+              from: pod
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.uid
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.name
+          #- sources:
+          #    - from: resource_attribute
+          #      name: k8s.pod.ip
+          - sources:
+              - from: connection
+
+    exporters:
+      otlphttp/dynatrace:
+        endpoint: "${env:DT_ENDPOINT}"
+        headers:
+          Authorization: "Api-Token ${env:DT_API_TOKEN}"
+      debug:
+        verbosity: basic
+        sampling_initial: 5
+        sampling_thereafter: 20
+
+    service:
+      telemetry:
+        logs:
+          level: "info"
+        metrics:
+          level: "detailed"
+      pipelines:
+        logs:
+          receivers: [otlp,filelog]
+          processors: [resourcedetection/ec2,resource/kind,resource,k8sattributes,batch]
+          exporters: [otlphttp/dynatrace,debug]
+        metrics:
+          receivers: [otlp,kubeletstats]
+          processors: [k8sattributes,resource/kind,resource,batch]
+          exporters: [otlphttp/dynatrace,debug]
