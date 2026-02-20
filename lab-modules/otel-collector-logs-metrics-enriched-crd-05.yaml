@@ -193,7 +193,7 @@ spec:
       pipelines:
         traces:
           receivers: [otlp]
-          processors: [k8sattributes,resourcedetection/gcp,resource/kind,resource,batch,transform]
+          processors: [k8sattributes,resourcedetection/ec2,resource/kind,resource,batch,transform]
           exporters: [otlphttp/dynatrace,debug]
         logs:
           receivers: [otlp,filelog]
