@@ -193,9 +193,9 @@ spec:
       pipelines:
         logs:
           receivers: [otlp,filelog]
-          processors: [resourcedetection/ec2,resource/kind,resource,k8sattributes,batch]
+          processors: [resourcedetection/ec2,resource/kind,resource,k8sattributes,batch,transform]
           exporters: [otlphttp/dynatrace,debug]
         metrics:
           receivers: [otlp,kubeletstats]
-          processors: [k8sattributes,resource/kind,resource,batch]
+          processors: [k8sattributes,resource/kind,resource,batch,transform]
           exporters: [otlphttp/dynatrace,debug]
