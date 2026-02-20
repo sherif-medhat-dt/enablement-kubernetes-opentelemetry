@@ -5,7 +5,7 @@ metadata:
   name: otel-collector-k8s-clusterrole-logs-metrics-crb
 subjects:
 - kind: ServiceAccount
-  name: dynatrace-logs-collector
+  name: dynatrace-logs-metrics-collector
   namespace: dynatrace
 roleRef:
   kind: ClusterRole
