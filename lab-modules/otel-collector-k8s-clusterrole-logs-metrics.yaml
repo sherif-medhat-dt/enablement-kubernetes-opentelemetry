@@ -4,9 +4,9 @@ kind: ClusterRole
 metadata:
   name: otel-collector-k8s-clusterrole-logs-metrics
 rules:
-- apiGroups: [""]
-  resources: ["pods", "namespaces", "nodes"]
-  verbs: ["get", "watch", "list"]
+- apiGroups: ['']
+  resources: ['events', 'namespaces', 'namespaces/status', 'nodes', 'nodes/spec', 'nodes/stats', 'nodes/proxy', 'pods', 'pods/status', 'replicationcontrollers', 'replicationcontrollers/status', 'resourcequotas', 'services']
+  verbs: ['get', 'list', 'watch']
 - apiGroups: ["apps"]
   resources: ["replicasets"]
   verbs: ["get", "list", "watch"]
